@@ -5,7 +5,7 @@ notları, laboratuvar çalışmalarını ve çözdüğüm kriz senaryolarını b
 ezberlemek değil, Linux kernel'inin arka planda nasıl çalıştığını anlamak.
 
 ## Öğrenilen Konular
-- [ ] Dosya Sistemi & Yetkilendirme (inode, izin bitleri, SUID/SGID/Sticky, ACL)
+- [x] Dosya Sistemi & Yetkilendirme (inode, izin bitleri, SUID/SGID/Sticky, ACL)
 - [ ] Process & Kaynak Yönetimi (fork/exec, systemd, cgroups, signals)
 - [ ] Ağ & Network Yönetimi (TCP/IP, routing, DNS, netfilter, SSH tünelleme)
 - [ ] Storage & Disk Yönetimi (LVM, inode tükenmesi, swap)

@@ -36,3 +36,12 @@ veri
 - SGID(2) dizinde: içinde oluşan dosyalar OLUŞTURANIN değil DİZİNİN grubunu alır
 - Kanıt: newgrp ile gid=deneme-grubu yaptım, yine de yeni dosya "ubuntu" (dizin grubu) aldı, SGID doğrulandı
 - Güvenlik dersi: SUID script yerine C wrapper + göreli komut cagrisi, PATH hijack ile root shell riski. Dogru cozum: sudoers NOPASSWD tek komut ya da Linux capabilities (setcap)
+
+## POSIX ACL
+- Klasik model sadece 1 sahip + 1 grup + digerleri tanimlar, cok rollu ihtiyaclarda yetmez
+- ACL inode'a extended attribute olarak eklenir, setfacl/getfacl ile yonetilir
+- ls -l ciktisinda sondaki + isareti ACL varligini gosterir
+- mask:: ACL'nin ust siniridir. chmod g-w gibi klasik komutlar mask'i dusurur ve
+  ACL ile verilen izinleri SESSIZCE iptal eder - kanitladim: rwx verdim, chmod g-w sonrasi
+  getfacl "#effective:r-x" gosterdi, ACL girdisi degismedi ama etkisi kisitlandi
+- Sonuc: ACL kullanilan dizinlerde chmod yerine setfacl kullanilmali
