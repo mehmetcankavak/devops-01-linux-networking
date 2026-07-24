@@ -16,3 +16,8 @@ $ ls -li a.txt b.txt
 $ rm a.txt && cat b.txt
 veri
 \`\`\`
+## İzin Bitleri ve Kernel Kontrol Sırası
+- Dizinlerde r/w/x farklı anlama gelir: x olmadan dosyaya isimle bile erişilemez (path traversal)
+- `chmod 600 dizin` → `ls` çalışır, dosya içeriğine `cat` ile erişilemez (x yok)
+- Kernel izin kontrolü SIRALI: EUID=dosya sahibiyse SADECE owner bitlerine bakılır, group/other hiç değerlendirilmez
+- Kanıt: `chmod 077 dosya` (owner=000, group/other=777) → sahibi bile OKUYAMAZ
