@@ -28,3 +28,11 @@ veri
 - umask 027 ile touch → 640 (666 & ~027), kanıtladım
 - ÜRETİM TUZAĞI: systemd servisleri interaktif shell'in umask'ını miras almaz, UMask= ile ayrı tanımlanır.
   "Lokalde çalışıyor sunucuda 403" hatalarının klasik sebeplerinden biri.
+
+## SUID / SGID / Sticky
+- SUID(4): process dosya SAHİBİNİN yetkisiyle koşar (örn. /usr/bin/passwd, gerçek sistemde doğruladım). Script'lerde Linux SUID'i yok sayar.
+- rws = SUID+execute birlikte; rwS (büyük S) = SUID var ama execute yok, şüpheli/hatalı konfigürasyon işareti
+- Sticky(1): /tmp mode 1777, herkes yazar, sadece kendi dosyasını siler
+- SGID(2) dizinde: içinde oluşan dosyalar OLUŞTURANIN değil DİZİNİN grubunu alır
+- Kanıt: newgrp ile gid=deneme-grubu yaptım, yine de yeni dosya "ubuntu" (dizin grubu) aldı, SGID doğrulandı
+- Güvenlik dersi: SUID script yerine C wrapper + göreli komut cagrisi, PATH hijack ile root shell riski. Dogru cozum: sudoers NOPASSWD tek komut ya da Linux capabilities (setcap)
