@@ -21,3 +21,10 @@ veri
 - `chmod 600 dizin` → `ls` çalışır, dosya içeriğine `cat` ile erişilemez (x yok)
 - Kernel izin kontrolü SIRALI: EUID=dosya sahibiyse SADECE owner bitlerine bakılır, group/other hiç değerlendirilmez
 - Kanıt: `chmod 077 dosya` (owner=000, group/other=777) → sahibi bile OKUYAMAZ
+
+## umask
+- gerçek_mode = istenen_mode & ~umask
+- Kernel dosyalara asla otomatik execute biti vermez (dosya 666'dan, dizin 777'den başlar)
+- umask 027 ile touch → 640 (666 & ~027), kanıtladım
+- ÜRETİM TUZAĞI: systemd servisleri interaktif shell'in umask'ını miras almaz, UMask= ile ayrı tanımlanır.
+  "Lokalde çalışıyor sunucuda 403" hatalarının klasik sebeplerinden biri.
