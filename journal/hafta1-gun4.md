@@ -38,3 +38,17 @@
 - stress-ng --vm 3 --vm-bytes 2700M --vm-keep (toplam 2.7GB talep > 1.9GB RAM + 0 swap): dmesg'de gerçek OOM Killer olayları, "Out of memory: Killed process ... oom_score_adj:1000" — stress-ng kendi sürecini bilerek yüksek skora ayarlamış (kendini feda ediyor)
 - Gerçek sistem süreçlerinde oom_score_adj: sshd=-1000 (asla öldürme, SSH erişimi kilitlenmesin diye), dockerd=-500 (yüksek koruma) — production'da systemd OOMScoreAdjust= ile önceden ayarlanmış
 - --vm-bytes değeri worker başına DEĞİL toplam hedef, worker sayısına bölünüyor (stress-ng log satırından doğrulandı: "using 300MB per stressor instance (total 900MB...)")
+
+## systemd & cgroups — Kaynak Limiti Uygulaması
+
+### Öğrendiklerim
+- systemd her .service unit'ini bir cgroup'a bağlar (system.slice altında); systemctl status çıktısındaki Memory/CPU/Tasks değerleri systemd'nin uydurması değil, doğrudan /sys/fs/cgroup/.../memory.current ve cpu.stat dosyalarından okunuyor (birebir doğrulandı: memory.current=11206656B ≈ 10.6M, cpu.stat usage_usec=67418 ≈ 67ms)
+- Unit dosyasında MemoryMax= koyarak cgroup'a gerçek, kernel seviyesinde zorlayıcı bir bellek tavanı konabilir — bu sadece izleme değil, gerçek bir sınır
+- Aşım anında devreye giren cgroup-scoped OOM Killer sadece o servisin süreçlerini hedefler, sistem genelini etkilemez; systemd bunu "Failed with result 'oom-kill'" olarak işaretler
+- Python stdout bir pipe'a (terminal değil) yazarken tam tamponlu (fully buffered) çalışır — SIGKILL ile aniden öldürülen sürecin tamponundaki loglar hiç flush edilmeden kaybolur (production'da "eksik log" tuzaklarından biri)
+
+### Kanıt
+- memory-eater.sh: sonsuz döngüde saniyede ~10MB bellek ayıran python script
+- /etc/systemd/system/memory-eater.service: MemoryMax=100M, MemoryAccounting=yes
+- journalctl -u memory-eater -f çıktısı: "The kernel OOM killer killed some processes in this unit" / "Failed with result 'oom-kill'" / "Consumed... 100M memory peak" — limit tam olarak MemoryMax değerinde tetiklendi
+- Script'in print() çıktıları journal'da hiç görünmedi — buffering + ani SIGKILL nedeniyle kayboldu
