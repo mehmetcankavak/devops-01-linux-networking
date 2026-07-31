@@ -52,3 +52,18 @@
 - /etc/systemd/system/memory-eater.service: MemoryMax=100M, MemoryAccounting=yes
 - journalctl -u memory-eater -f çıktısı: "The kernel OOM killer killed some processes in this unit" / "Failed with result 'oom-kill'" / "Consumed... 100M memory peak" — limit tam olarak MemoryMax değerinde tetiklendi
 - Script'in print() çıktıları journal'da hiç görünmedi — buffering + ani SIGKILL nedeniyle kayboldu
+
+## Sinyaller (Signals) & Exit Code Kuralı
+
+### Öğrendiklerim
+- SIGTERM ve SIGINT (Ctrl+C) yakalanabilir (trap) veya görmezden gelinebilir — süreç kendi temiz kapanış kodunu çalıştırma fırsatı bulur
+- SIGKILL (-9) ve SIGSTOP/SIGCONT KESİNLİKLE yakalanamaz — bunlar kernel seviyesinde doğrudan uygulanır, sürecin trap kodu hiç çalışma fırsatı bulamaz (SIGKILL için süreç anında yok olur, SIGSTOP/CONT'ta süreç donar/devam eder ama kendi haberi bile olmaz)
+- SIGSTOP ile durdurulan süreç STAT=T olur, hiç CPU harcamaz ama bellekte/PID tablosunda kalır — SIGCONT ile kaldığı yerden devam eder
+- Exit code kuralı: bir sinyal tarafından öldürülen sürecin exit kodu 128+sinyal_no olur (SIGKILL=9 → 137, SIGTERM=15 → 143 vb.) — bu kural, $? veya systemctl çıktısından "hangi sinyal öldürdü" diye geriye doğru teşhis etmeyi sağlar
+- Normal (trap ile) çıkışta exit code, script'in exit ile verdiği değerdir (bizim örnekte exit 0)
+
+### Kanıt
+- signal-test.sh: SIGTERM'i yakalayıp temiz çıkan (exit 0), SIGINT'i yakalayıp görmezden gelen bir script
+- kill <PID> (SIGTERM): trap çalıştı, "temiz kapanıyorum" mesajı basıldı, $?=0
+- kill -9 <PID> (SIGKILL): trap ÇALIŞMADI, sadece bash'in kendi "Killed" mesajı çıktı, $?=137 (128+9 doğrulandı)
+- kill -STOP <PID> → ps STAT=T (donduruldu) → kill -CONT <PID> → ps STAT=S (sessizce devam etti, script'in haberi olmadı)
