@@ -80,3 +80,17 @@
 - 2 CPU'lu VM'de 2 stress-ng süreci (biri nice=19, biri nice=-5): ikisi de %CPU=100 aldı, TIME+ birebir eşit — kıtlık yokken nice etkisiz
 - Aynı VM'de 8 stress-ng süreci (4x nice=19, 4x nice=-5) 2 çekirdeğe sıkıştırılınca: nice=-5 süreçler ~%50 CPU (2 tam çekirdek), nice=19 süreçler ~%0.3 CPU (açlık) — gerçek kıtlıkta nice çok belirgin
 - ionice -c 3 (idle) ile normal (best-effort, prio 0) iki stress-ng --hdd süreci yarıştırıldı: idle süreç %CPU=18.8/TIME+2.31s, best-effort süreç %CPU=22.0/TIME+2.53s — idle süreç beklendiği gibi daha az iş yapabildi (disk I/O'da geri planda kaldı)
+
+## LAB 4 — Self-Healing systemd Service
+
+### Öğrendiklerim
+- Restart=on-failure: servis sıfırdan farklı exit code ile bittiğinde systemd otomatik yeniden başlatır
+- RestartSec=N: yeniden başlatmadan önce N saniye bekletir, anlık deli-döngüyü önler
+- StartLimitIntervalSec + StartLimitBurst: belirtilen zaman penceresinde izin verilen maksimum başlatma denemesi sayısını sınırlar; aşılırsa systemd pes eder, servisi kalıcı "failed" bırakır — production'daki crash-loop koruma mekanizmasının aynısı
+- Her restart tamamen yeni bir süreç (yeni PID) yaratır, eskisini diriltmez
+
+### Kanıt
+- flaky-service.sh: 5 saniye çalışıp exit 1 ile bilerek çöken script
+- flaky.service: Restart=on-failure, RestartSec=2, StartLimitIntervalSec=30, StartLimitBurst=4
+- journalctl -u flaky -f: PID her seferinde farklı (9228→9363→15445→25599), "restart counter is at 1,2,3" sayaç arttı, 4. denemede "Start request repeated too quickly" ile durdu
+- systemctl status flaky: Active: failed (Result: exit-code) — kalıcı durdu, insan müdahalesi bekliyor
