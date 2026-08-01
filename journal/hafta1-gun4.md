@@ -67,3 +67,16 @@
 - kill <PID> (SIGTERM): trap çalıştı, "temiz kapanıyorum" mesajı basıldı, $?=0
 - kill -9 <PID> (SIGKILL): trap ÇALIŞMADI, sadece bash'in kendi "Killed" mesajı çıktı, $?=137 (128+9 doğrulandı)
 - kill -STOP <PID> → ps STAT=T (donduruldu) → kill -CONT <PID> → ps STAT=S (sessizce devam etti, script'in haberi olmadı)
+
+## nice/renice/ionice — Kaynak Önceliklendirme
+
+### Öğrendiklerim
+- nice değeri -20 (en yüksek öncelik) ile +19 (en düşük öncelik) arasında, CPU scheduler'ının sürece ne sıklıkla zaman vereceğini etkiler; normal kullanıcı sadece önceliğini düşürebilir (pozitif), yükseltmek (negatif) root ister
+- nice komutu süreci başlatırken öncelik atar, renice zaten çalışan bir sürecin önceliğini sonradan değiştirir
+- Nice değeri sadece GERÇEK CPU KITLIĞI altında etkili olur — CPU sayısından az süreç varken hiçbir fark yaratmaz (her süreç kendi çekirdeğini alır)
+- ionice, CPU'dan tamamen ayrı bir mekanizma; disk I/O sırasını önceliklendirir. 3 sınıf: real-time (en yüksek, tehlikeli), best-effort (varsayılan, 0-7 seviye), idle (sadece disk boşken çalışır, diğer I/O'ya her zaman yol verir)
+
+### Kanıt
+- 2 CPU'lu VM'de 2 stress-ng süreci (biri nice=19, biri nice=-5): ikisi de %CPU=100 aldı, TIME+ birebir eşit — kıtlık yokken nice etkisiz
+- Aynı VM'de 8 stress-ng süreci (4x nice=19, 4x nice=-5) 2 çekirdeğe sıkıştırılınca: nice=-5 süreçler ~%50 CPU (2 tam çekirdek), nice=19 süreçler ~%0.3 CPU (açlık) — gerçek kıtlıkta nice çok belirgin
+- ionice -c 3 (idle) ile normal (best-effort, prio 0) iki stress-ng --hdd süreci yarıştırıldı: idle süreç %CPU=18.8/TIME+2.31s, best-effort süreç %CPU=22.0/TIME+2.53s — idle süreç beklendiği gibi daha az iş yapabildi (disk I/O'da geri planda kaldı)
