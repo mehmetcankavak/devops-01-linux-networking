@@ -94,3 +94,19 @@
 - flaky.service: Restart=on-failure, RestartSec=2, StartLimitIntervalSec=30, StartLimitBurst=4
 - journalctl -u flaky -f: PID her seferinde farklı (9228→9363→15445→25599), "restart counter is at 1,2,3" sayaç arttı, 4. denemede "Start request repeated too quickly" ile durdu
 - systemctl status flaky: Active: failed (Result: exit-code) — kalıcı durdu, insan müdahalesi bekliyor
+
+## LAB 5 — Resource-Hog Avlama (Section 2 Kapanış Lab'ı)
+
+### Öğrendiklerim
+- %CPU/%MEM tek başına "kim tüketiyor" sorusuna cevap verir ama "nereden geldi" sorusuna vermez — gerçek olay müdahalesinde PPID zinciri (ps -fp / ps -o pid,ppid,cmd) yukarı doğru takip edilerek kökene inilmeli
+- TTY sütunu (pts/0 vs ?) bir sürecin interaktif bir terminalden mi yoksa arka plan servisinden/cron'dan mı geldiğini ayırt etmeye yarar — şüpheli/kötücül süreç ayrımında kritik ipucu
+- Bir süreç ailesini (parent+children) doğru temizlemek için sadece üstteki PID'i öldürmek yetmez, çocuklar öksüz kalıp çalışmaya devam edebilir — pkill -P <ppid> tüm çocukları hedefler
+- Müdahale kararı bulgulara göre verilir: zaten düşük öncelikli (nice) ve kendi kendine sonlanan (timeout'lu), meşru kökenli bir süreç her zaman hemen öldürülmesi gereken bir tehdit değildir — bağlam önemli
+
+### Kanıt
+- nohup bash -c 'nice -n 10 stress-ng --cpu 1 --vm 1 --vm-bytes 300M --timeout 300s' & disown ile gizli süreç başlatıldı
+- top: PID 1884 (stress-ng-vm, RES≈302MB, %MEM=15.5) ve PID 1882 (stress-ng-cpu, %CPU=100) şüpheli olarak tespit edildi
+- ps -fp zinciri: 1882/1884 → PPID 1872/1883 → PPID 1836 (-bash, TTY=pts/0) — kökenin interaktif terminal olduğu doğrulandı, cron/gizli servis değil
+- pkill -P 1872 ile tüm süreç ailesi tek seferde temizlendi, ps aux | grep stress-ng ile artık kalmadığı doğrulandı
+
+## Section 2 — Process & Kaynak Yönetimi: TAMAMLANDI
