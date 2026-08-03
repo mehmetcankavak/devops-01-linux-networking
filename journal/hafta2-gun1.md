@@ -31,3 +31,21 @@
 - lab2'den ping -c3 10.20.1.10: %0 paket kaybı — lab1 üzerinden başarıyla yönlendirildi
 - ip route get 10.20.1.10 → via 192.168.252.4 (bizim özel rotamız) — kanıtlandı
 - ip route get 8.8.8.8 → via 192.168.252.1 (normal gateway) — kontrast: genel trafik etkilenmedi, sadece 10.20.1.0/24 özel rotayı kullandı
+
+## DNS Çözümleme & dig/curl Teşhisi (Gün 3)
+
+### Öğrendiklerim
+- Çözümleme sırası: /etc/nsswitch.conf (hosts: files dns) → /etc/hosts (statik override, DNS'ten önce gelir) → /etc/resolv.conf → systemd-resolved cache → recursive resolver (root → TLD → yetkili sunucu)
+- /etc/resolv.conf modern Ubuntu'da yalan söyleyebilir: sadece 127.0.0.53 (yerel stub) gösterir, gerçek upstream DNS'i resolvectl status söyler
+- ping ile DNS test edilmez: ping aynı anda DNS + ICMP + routing'i test eder, hangisinin kırıldığını ayırt edemez. Katman katman: DNS için dig, TCP için nc -zv, HTTP için curl -v
+- dig +trace ile cache bypass edilip gerçek recursive zincir (root NS → TLD NS → domain'in kendi NS'i → A kaydı) görülebilir
+- Aynı domain için farklı sorgularda farklı ama geçerli IP dönebilir (anycast/load-balancing, ör. Google)
+- dig @8.8.8.8 ile kendi resolver'ını atlayıp doğrudan bir sunucuya sorarak "benim DNS ayarım mı domain'in kendisi mi bozuk" ayrımı yapılır
+- curl --resolve, /etc/hosts'u kalıcı değiştirmeden DNS'i geçici bypass edip belirli bir backend'i test etmenin yolu (mavi/yeşil deploy doğrulaması)
+
+### Kanıt
+- cat /etc/resolv.conf → nameserver 127.0.0.53 (stub) / resolvectl status → Current DNS Server: 192.168.252.1 (gerçek sunucu, multipass gateway)
+- dig +short google.com → 172.217.23.142, dig +trace google.com → root-servers.net → gtld-servers.net (.com) → ns1-4.google.com → A kaydı 192.178.24.14 (farklı ama geçerli IP, anycast kanıtı)
+- dig google.com MX → smtp.google.com, dig google.com NS → ns1-4.google.com
+- dig @8.8.8.8 google.com → doğrudan Google'ın public DNS'ine sorgu, farklı sunucudan aynı doğrulukta cevap
+- /etc/hosts'a "192.168.252.5 myapp.test" eklendi → getent hosts myapp.test doğru çözdü → ping myapp.test gerçekten lab2'ye (192.168.252.5) gitti, %0 kayıp — /etc/hosts'un DNS'ten önce geldiği kanıtlandı
